@@ -12,7 +12,8 @@
 -- User accounts are not included: passwords must be bcrypt-hashed, so create the
 -- admin with `python -m app.seed` (it skips catalogue rows that already exist).
 --
--- Money columns are integer paise (Rs 1 = 100 paise).
+-- Money columns are integer paise (Rs 1 = 100 paise). Like the migration, columns
+-- have no SQL defaults: the API always sets status, timestamps and flags itself.
 
 BEGIN;
 
@@ -25,9 +26,9 @@ CREATE TABLE users (
     email         VARCHAR(255) NOT NULL,
     phone         VARCHAR(20),
     password_hash VARCHAR(255) NOT NULL,
-    is_admin      BOOLEAN      NOT NULL DEFAULT FALSE,
-    is_active     BOOLEAN      NOT NULL DEFAULT TRUE,
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+    is_admin      BOOLEAN      NOT NULL,
+    is_active     BOOLEAN      NOT NULL,
+    created_at    TIMESTAMPTZ  NOT NULL
 );
 CREATE UNIQUE INDEX ix_users_email ON users (email);
 
@@ -39,7 +40,7 @@ CREATE TABLE cars (
     seats       INTEGER      NOT NULL,
     rate_per_km INTEGER      NOT NULL,          -- paise per km
     image       VARCHAR(255),
-    is_active   BOOLEAN      NOT NULL DEFAULT TRUE
+    is_active   BOOLEAN      NOT NULL
 );
 
 CREATE TABLE rental_bookings (
@@ -52,8 +53,8 @@ CREATE TABLE rental_bookings (
     base_amount  INTEGER     NOT NULL,
     tax_amount   INTEGER     NOT NULL,
     total_amount INTEGER     NOT NULL,
-    status       VARCHAR(20) NOT NULL DEFAULT 'pending_payment',
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    status       VARCHAR(20) NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX ix_rental_bookings_status  ON rental_bookings (status);
 CREATE INDEX ix_rental_bookings_user_id ON rental_bookings (user_id);
@@ -64,8 +65,8 @@ CREATE TABLE wash_plans (
     id        SERIAL PRIMARY KEY,
     name      VARCHAR(80) NOT NULL,
     price     INTEGER     NOT NULL,             -- paise, before tax
-    features  JSON        NOT NULL DEFAULT '[]',
-    is_active BOOLEAN     NOT NULL DEFAULT TRUE
+    features  JSON        NOT NULL,
+    is_active BOOLEAN     NOT NULL
 );
 
 CREATE TABLE wash_centers (
@@ -74,8 +75,8 @@ CREATE TABLE wash_centers (
     area          VARCHAR(80)  NOT NULL,
     address       TEXT         NOT NULL,
     phone         VARCHAR(20),
-    slot_capacity INTEGER      NOT NULL DEFAULT 2,   -- cars per time slot
-    is_active     BOOLEAN      NOT NULL DEFAULT TRUE
+    slot_capacity INTEGER      NOT NULL,   -- cars per time slot
+    is_active     BOOLEAN      NOT NULL
 );
 
 CREATE TABLE wash_bookings (
@@ -88,8 +89,8 @@ CREATE TABLE wash_bookings (
     base_amount  INTEGER     NOT NULL,
     tax_amount   INTEGER     NOT NULL,
     total_amount INTEGER     NOT NULL,
-    status       VARCHAR(20) NOT NULL DEFAULT 'pending_payment',
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    status       VARCHAR(20) NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX ix_wash_bookings_status    ON wash_bookings (status);
 CREATE INDEX ix_wash_bookings_user_id   ON wash_bookings (user_id);
@@ -108,8 +109,8 @@ CREATE TABLE rides (
     price_per_seat  INTEGER      NOT NULL,      -- paise, before tax
     vehicle         VARCHAR(80),
     notes           TEXT,
-    status          VARCHAR(20)  NOT NULL DEFAULT 'open',   -- open | cancelled | completed
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT now()
+    status          VARCHAR(20)  NOT NULL,   -- open | cancelled | completed
+    created_at      TIMESTAMPTZ  NOT NULL
 );
 CREATE INDEX ix_rides_depart_at   ON rides (depart_at);
 CREATE INDEX ix_rides_destination ON rides (destination);
@@ -125,8 +126,8 @@ CREATE TABLE ride_bookings (
     base_amount  INTEGER     NOT NULL,
     tax_amount   INTEGER     NOT NULL,
     total_amount INTEGER     NOT NULL,
-    status       VARCHAR(20) NOT NULL DEFAULT 'pending_payment',
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    status       VARCHAR(20) NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL,
     CONSTRAINT uq_ride_passenger UNIQUE (ride_id, passenger_id)
 );
 CREATE INDEX ix_ride_bookings_passenger_id ON ride_bookings (passenger_id);
@@ -141,12 +142,12 @@ CREATE TABLE payments (
     booking_kind VARCHAR(10) NOT NULL,          -- rental | wash | ride
     booking_id   INTEGER     NOT NULL,
     amount       INTEGER     NOT NULL,          -- paise
-    currency     VARCHAR(3)  NOT NULL DEFAULT 'INR',
+    currency     VARCHAR(3)  NOT NULL,
     provider     VARCHAR(20) NOT NULL,          -- razorpay | mock
     order_id     VARCHAR(64) NOT NULL,
     payment_id   VARCHAR(64),
-    status       VARCHAR(10) NOT NULL DEFAULT 'created',   -- created | paid | failed
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    status       VARCHAR(10) NOT NULL,   -- created | paid | failed
+    created_at   TIMESTAMPTZ NOT NULL,
     paid_at      TIMESTAMPTZ
 );
 CREATE UNIQUE INDEX ix_payments_order_id ON payments (order_id);
@@ -163,31 +164,31 @@ INSERT INTO alembic_version (version_num) VALUES ('8e4ca7b8ce70');
 
 -- ------------------------------------------------------------------ catalogue data
 
-INSERT INTO cars (name, seats, rate_per_km, image) VALUES
-    ('Maruti WagonR',          4,  800, '/cars/wagonr.jpg'),
-    ('Tata Tiago',             4,  800, '/cars/tiago.jpg'),
-    ('Maruti Swift Dzire',     5, 1000, '/cars/dzire.jpg'),
-    ('Hyundai Verna',          5, 1000, '/cars/verna.jpg'),
-    ('Maruti Ertiga',          7, 1300, '/cars/ertiga.jpg'),
-    ('Toyota Innova Crysta',   7, 1300, '/cars/innova.jpg'),
-    ('Tata Winger',           13, 1800, '/cars/winger.jpg'),
-    ('Force Tempo Traveller', 17, 2200, '/cars/traveller.jpg');
+INSERT INTO cars (name, seats, rate_per_km, image, is_active) VALUES
+    ('Maruti WagonR',          4,  800, '/cars/wagonr.jpg', TRUE),
+    ('Tata Tiago',             4,  800, '/cars/tiago.jpg', TRUE),
+    ('Maruti Swift Dzire',     5, 1000, '/cars/dzire.jpg', TRUE),
+    ('Hyundai Verna',          5, 1000, '/cars/verna.jpg', TRUE),
+    ('Maruti Ertiga',          7, 1300, '/cars/ertiga.jpg', TRUE),
+    ('Toyota Innova Crysta',   7, 1300, '/cars/innova.jpg', TRUE),
+    ('Tata Winger',           13, 1800, '/cars/winger.jpg', TRUE),
+    ('Force Tempo Traveller', 17, 2200, '/cars/traveller.jpg', TRUE);
 
-INSERT INTO wash_plans (name, price, features) VALUES
-    ('Basic',     55000, '["Seat wash", "Vacuum", "Exterior wash"]'),
-    ('Premium',   75000, '["Seat wash", "Vacuum", "Exterior wash", "Interior wet clean", "Window wipe"]'),
-    ('Complete', 105000, '["Seat wash", "Vacuum", "Exterior wash", "Interior wet clean", "Window wipe", "Disinfection", "Polish and detailing"]');
+INSERT INTO wash_plans (name, price, features, is_active) VALUES
+    ('Basic',     55000, '["Seat wash", "Vacuum", "Exterior wash"]', TRUE),
+    ('Premium',   75000, '["Seat wash", "Vacuum", "Exterior wash", "Interior wet clean", "Window wipe"]', TRUE),
+    ('Complete', 105000, '["Seat wash", "Vacuum", "Exterior wash", "Interior wet clean", "Window wipe", "Disinfection", "Polish and detailing"]', TRUE);
 
-INSERT INTO wash_centers (name, area, address, phone) VALUES
-    ('Splash & Dash',        'Kandivali West', '402 Blue Empress Apartments, Borsapada Road, opp. Poisar Gymkhana, Mumbai 400067', '7947411184'),
-    ('PaajiAuto',            'Malad West',     'Evershine Nagar, New Link Road, near Movie Time Cinema, Mumbai 400064', '7949315450'),
-    ('Extreme Car Care',     'Ghansoli',       'Shop 1, Vanai Niwas, Sector 2, near Ghansoli Station, Navi Mumbai 400701', '7947288767'),
-    ('360 Moto Care',        'Kharghar',       'Shops B-15 and A-16, Shah Arcade, Sector 6, near Global IT Park, Navi Mumbai 410210', '7947179719'),
-    ('Auto Launder',         'Prabhadevi',     'Plot 105B, S L Matkar Road, near Parel ST Depot, Mumbai 400025', '7947197114'),
-    ('Baba Auto Garage',     'Ghatkopar West', 'Patan Wada Compound, LBS Marg, opp. Brand Factory, Mumbai 400084', '7947186715'),
-    ('Zebro Auto Care',      'Chembur East',   'Plot 7, Laxmi Narayan Shopping Complex, Sion Trombay Road, Mumbai 400071', '7947168789'),
-    ('VKS Auto Shine',       'Thane West',     'Next to Tata Motors, Eastern Express Highway, Thane 400602', '8045783832'),
-    ('3C Crystal Clear Car', 'Mulund West',    'Zojawala Petroleum, LBS Marg, opp. Santoshi Mata Temple, Mumbai 400080', '7947371337'),
-    ('Star Auto Care',       'Colaba',         '4th Pasta Lane, near Colaba Market Post Office, Mumbai 400005', '9920069887');
+INSERT INTO wash_centers (name, area, address, phone, slot_capacity, is_active) VALUES
+    ('Splash & Dash',        'Kandivali West', '402 Blue Empress Apartments, Borsapada Road, opp. Poisar Gymkhana, Mumbai 400067', '7947411184', 2, TRUE),
+    ('PaajiAuto',            'Malad West',     'Evershine Nagar, New Link Road, near Movie Time Cinema, Mumbai 400064', '7949315450', 2, TRUE),
+    ('Extreme Car Care',     'Ghansoli',       'Shop 1, Vanai Niwas, Sector 2, near Ghansoli Station, Navi Mumbai 400701', '7947288767', 2, TRUE),
+    ('360 Moto Care',        'Kharghar',       'Shops B-15 and A-16, Shah Arcade, Sector 6, near Global IT Park, Navi Mumbai 410210', '7947179719', 2, TRUE),
+    ('Auto Launder',         'Prabhadevi',     'Plot 105B, S L Matkar Road, near Parel ST Depot, Mumbai 400025', '7947197114', 2, TRUE),
+    ('Baba Auto Garage',     'Ghatkopar West', 'Patan Wada Compound, LBS Marg, opp. Brand Factory, Mumbai 400084', '7947186715', 2, TRUE),
+    ('Zebro Auto Care',      'Chembur East',   'Plot 7, Laxmi Narayan Shopping Complex, Sion Trombay Road, Mumbai 400071', '7947168789', 2, TRUE),
+    ('VKS Auto Shine',       'Thane West',     'Next to Tata Motors, Eastern Express Highway, Thane 400602', '8045783832', 2, TRUE),
+    ('3C Crystal Clear Car', 'Mulund West',    'Zojawala Petroleum, LBS Marg, opp. Santoshi Mata Temple, Mumbai 400080', '7947371337', 2, TRUE),
+    ('Star Auto Care',       'Colaba',         '4th Pasta Lane, near Colaba Market Post Office, Mumbai 400005', '9920069887', 2, TRUE);
 
 COMMIT;
