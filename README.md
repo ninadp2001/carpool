@@ -94,6 +94,8 @@ backend/
     routers/         auth, rentals, wash, rides, payments, account, admin
     seed.py          cars, plans, centres, demo rides
   alembic/           migrations
+database/
+  schema.sql         plain-SQL copy of the schema + catalogue data
   tests/
 frontend/
   src/
